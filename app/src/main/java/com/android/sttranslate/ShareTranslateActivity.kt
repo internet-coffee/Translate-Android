@@ -53,6 +53,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sttranslate.ui.theme.STTranslateTheme
 
 class ShareTranslateActivity : ComponentActivity() {
@@ -96,34 +97,33 @@ class ShareTranslateActivity : ComponentActivity() {
 @Composable
 fun TranslateDialogCard(
     inputText: String,
+    viewModel: TranslateViewModel = viewModel()
 ) {
     // 狀態
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
+    val displayValue = if (viewModel.resultText == "ERROR_CONNECTION") {
+        stringResource(R.string.error_connection)
+    } else {
+        viewModel.resultText
+    }
+
     var sourceLangCode by remember { mutableStateOf(LanguagePreferences.getSourceLanguage(context)) }
     var targetLangCode by remember { mutableStateOf(LanguagePreferences.getTargetLanguage(context)) }
-    var resultText by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(true) }
 
     // 選單開關
     var isSourceMenuExpanded by remember { mutableStateOf(false) }
     var isTargetMenuExpanded by remember { mutableStateOf(false) }
 
-    // 翻譯邏輯
-    LaunchedEffect(sourceLangCode, targetLangCode) {
-        isLoading = true
-        try {
-            val response = NetworkModule.api.translate(
-                source = sourceLangCode,
-                target = targetLangCode,
-                query = inputText
-            )
-            resultText = response.translatedText
-        } catch (_: Exception) {
-            resultText = context.getString(R.string.error_connection)
-        } finally {
-            isLoading = false
+    LaunchedEffect(inputText) {
+        if (viewModel.inputText.isBlank()) {
+            viewModel.inputText = inputText
         }
+    }
+
+    // 監控語言變動自動翻譯
+    LaunchedEffect(sourceLangCode, targetLangCode) {
+        viewModel.performTranslate(sourceLangCode, targetLangCode)
     }
 
     // === 主卡片 ===
@@ -153,7 +153,7 @@ fun TranslateDialogCard(
                     text = stringResource(R.string.app_name),
                     style = MaterialTheme.typography.headlineSmall
                 )
-                if (isLoading) {
+                if (viewModel.isLoading) {
                     Spacer(modifier = Modifier.width(16.dp))
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
@@ -321,8 +321,8 @@ fun TranslateDialogCard(
                     // 複製譯文按鈕
                     IconButton(
                         onClick = {
-                            if (resultText.isNotEmpty()) {
-                                clipboardManager.setText(AnnotatedString(resultText))
+                            if (viewModel.resultText.isNotEmpty()) {
+                                clipboardManager.setText(AnnotatedString(viewModel.resultText))
 
                                 Toast.makeText(
                                     context,
@@ -343,7 +343,7 @@ fun TranslateDialogCard(
                 // 譯文內容
                 Box(modifier = Modifier.heightIn(min = 40.dp)) {
                     Text(
-                        text = resultText,
+                        text = displayValue,
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface
                     )

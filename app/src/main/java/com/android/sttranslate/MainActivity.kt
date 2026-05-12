@@ -47,7 +47,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,8 +57,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sttranslate.ui.theme.STTranslateTheme
-import kotlinx.coroutines.launch
 
 object UIConfig {
     val HorizontalStart = 16.dp  // 左側文字起點
@@ -85,44 +84,24 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun RTranslatorStyleScreen() {
+fun RTranslatorStyleScreen(viewModel: TranslateViewModel = viewModel()) {
     val context = LocalContext.current
-    var sourceLangCode by remember { mutableStateOf(LanguagePreferences.getSourceLanguage(context)) }
-    var targetLangCode by remember { mutableStateOf(LanguagePreferences.getTargetLanguage(context)) }
-    var inputText by remember { mutableStateOf("") }
-    var resultText by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
-
-    val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
+    val isPlaceholder = viewModel.resultText.isEmpty()
+    val isError = viewModel.resultText == "ERROR_CONNECTION"
 
-    fun performTranslate() {
-        if (inputText.isBlank() || isLoading) return
-        focusManager.clearFocus()
-        isLoading = true
-        scope.launch {
-            try {
-                val response = NetworkModule.api.translate(
-                    source = sourceLangCode,
-                    target = targetLangCode,
-                    query = inputText
-                )
-                resultText = response.translatedText
-            } catch (_: Exception) {
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.error_connection),
-                    Toast.LENGTH_SHORT
-                ).show()
-            } finally {
-                isLoading = false
-            }
-        }
+    val displayResult = when {
+        isError -> stringResource(R.string.error_connection)
+        isPlaceholder -> stringResource(R.string.translation_empty)
+        else -> viewModel.resultText
     }
 
+    var sourceLangCode by remember { mutableStateOf(LanguagePreferences.getSourceLanguage(context)) }
+    var targetLangCode by remember { mutableStateOf(LanguagePreferences.getTargetLanguage(context)) }
+
     LaunchedEffect(sourceLangCode, targetLangCode) {
-        if (inputText.isNotBlank()) {
-            performTranslate()
+        if (viewModel.inputText.isNotBlank()) {
+            viewModel.performTranslate(sourceLangCode, targetLangCode)
         }
     }
 
@@ -147,18 +126,21 @@ fun RTranslatorStyleScreen() {
                     val swapped = swapLanguages(sourceLangCode, targetLangCode)
                     sourceLangCode = swapped.source
                     targetLangCode = swapped.target
-                    if (resultText.isNotBlank()) {
-                        inputText = resultText
+                    if (viewModel.resultText.isNotBlank()) {
+                        viewModel.inputText = viewModel.resultText
                     }
                 }
             )
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { performTranslate() },
+                onClick = {
+                    focusManager.clearFocus()
+                    viewModel.performTranslate(sourceLangCode, targetLangCode)
+                },
                 containerColor = MaterialTheme.colorScheme.primaryContainer
             ) {
-                if (isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                if (viewModel.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp))
                 else Icon(Icons.Default.Translate, contentDescription = null)
             }
         }
@@ -170,10 +152,10 @@ fun RTranslatorStyleScreen() {
         ) {
             InputArea(
                 modifier = Modifier.weight(0.4f),
-                inputText = inputText,
-                onValueChange = { inputText = it },
-                onTranslate = { performTranslate() },
-                onClear = { inputText = ""; resultText = "" }
+                inputText = viewModel.inputText,
+                onValueChange = { viewModel.inputText = it },
+                onTranslate = { viewModel.performTranslate(sourceLangCode, targetLangCode) },
+                onClear = { viewModel.clearText() }
             )
 
             HorizontalDivider(
@@ -186,7 +168,8 @@ fun RTranslatorStyleScreen() {
 
             ResultArea(
                 modifier = Modifier.weight(0.6f),
-                resultText = resultText
+                resultText = displayResult,
+                isPlaceholder = isPlaceholder
             )
         }
     }
@@ -257,7 +240,7 @@ fun InputArea(
 }
 
 @Composable
-fun ResultArea(modifier: Modifier, resultText: String) {
+fun ResultArea(modifier: Modifier, resultText: String, isPlaceholder: Boolean) {
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
 
@@ -275,9 +258,9 @@ fun ResultArea(modifier: Modifier, resultText: String) {
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = resultText.ifBlank { stringResource(R.string.translation_empty) },
+                text = resultText,
                 style = MaterialTheme.typography.headlineSmall,
-                color = if (resultText.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                color = if (isPlaceholder) MaterialTheme.colorScheme.onSurfaceVariant.copy(
                     alpha = 0.5f
                 )
                 else MaterialTheme.colorScheme.onSurface
