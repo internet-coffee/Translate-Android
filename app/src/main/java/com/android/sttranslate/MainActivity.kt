@@ -43,6 +43,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -96,7 +97,7 @@ fun RTranslatorStyleScreen() {
     val focusManager = LocalFocusManager.current
 
     fun performTranslate() {
-        if (inputText.isBlank()) return
+        if (inputText.isBlank() || isLoading) return
         focusManager.clearFocus()
         isLoading = true
         scope.launch {
@@ -116,6 +117,12 @@ fun RTranslatorStyleScreen() {
             } finally {
                 isLoading = false
             }
+        }
+    }
+
+    LaunchedEffect(sourceLangCode, targetLangCode) {
+        if (inputText.isNotBlank()) {
+            performTranslate()
         }
     }
 
@@ -141,7 +148,7 @@ fun RTranslatorStyleScreen() {
                     sourceLangCode = swapped.source
                     targetLangCode = swapped.target
                     if (resultText.isNotBlank()) {
-                        inputText = resultText; resultText = ""
+                        inputText = resultText
                     }
                 }
             )
@@ -268,7 +275,7 @@ fun ResultArea(modifier: Modifier, resultText: String) {
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = resultText.ifEmpty { stringResource(R.string.translation_empty) },
+                text = resultText.ifBlank { stringResource(R.string.translation_empty) },
                 style = MaterialTheme.typography.headlineSmall,
                 color = if (resultText.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant.copy(
                     alpha = 0.5f
