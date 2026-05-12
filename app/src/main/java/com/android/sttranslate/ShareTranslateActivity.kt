@@ -43,7 +43,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,7 +54,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.android.sttranslate.ui.theme.STTranslateTheme
-import kotlinx.coroutines.launch
 
 class ShareTranslateActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,7 +65,7 @@ class ShareTranslateActivity : ComponentActivity() {
         val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT) ?: ""
         val processText = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString() ?: ""
 
-        val textToTranslate = if (sharedText.isNotBlank()) sharedText else processText
+        val textToTranslate = sharedText.ifBlank { processText }
 
         if (textToTranslate.isBlank()) {
             finish()
@@ -87,8 +85,7 @@ class ShareTranslateActivity : ComponentActivity() {
                     contentAlignment = Alignment.Center
                 ) {
                     TranslateDialogCard(
-                        inputText = textToTranslate,
-                        onClose = { finish() }
+                        inputText = textToTranslate
                     )
                 }
             }
@@ -99,7 +96,6 @@ class ShareTranslateActivity : ComponentActivity() {
 @Composable
 fun TranslateDialogCard(
     inputText: String,
-    onClose: () -> Unit,
 ) {
     // 狀態
     val context = LocalContext.current
@@ -113,26 +109,21 @@ fun TranslateDialogCard(
     var isSourceMenuExpanded by remember { mutableStateOf(false) }
     var isTargetMenuExpanded by remember { mutableStateOf(false) }
 
-    val scope = rememberCoroutineScope()
-
     // 翻譯邏輯
-    fun doTranslate(source: String, target: String) {
+    LaunchedEffect(sourceLangCode, targetLangCode) {
         isLoading = true
-        scope.launch {
-            try {
-                val response =
-                    NetworkModule.api.translate(source = source, target = target, query = inputText)
-                resultText = response.translatedText
-            } catch (_: Exception) {
-                resultText = context.getString(R.string.error_connection)
-            } finally {
-                isLoading = false
-            }
+        try {
+            val response = NetworkModule.api.translate(
+                source = sourceLangCode,
+                target = targetLangCode,
+                query = inputText
+            )
+            resultText = response.translatedText
+        } catch (_: Exception) {
+            resultText = context.getString(R.string.error_connection)
+        } finally {
+            isLoading = false
         }
-    }
-
-    LaunchedEffect(Unit) {
-        doTranslate(sourceLangCode, targetLangCode)
     }
 
     // === 主卡片 ===
@@ -140,7 +131,7 @@ fun TranslateDialogCard(
         modifier = Modifier
             .fillMaxWidth(0.9f)
             .heightIn(max = 600.dp)
-            .clickable(enabled = false) {},
+            .clickable(interactionSource = null, indication = null) {},
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
     ) {
@@ -212,11 +203,9 @@ fun TranslateDialogCard(
                                 DropdownMenuItem(
                                     text = { Text(stringResource(nameResId)) },
                                     onClick = {
-                                        sourceLangCode = code; isSourceMenuExpanded =
-                                        false; LanguagePreferences.saveSourceLanguage(
-                                        context,
-                                        code
-                                    ); doTranslate(sourceLangCode, targetLangCode)
+                                        sourceLangCode = code
+                                        isSourceMenuExpanded = false
+                                        LanguagePreferences.saveSourceLanguage(context, code)
                                     }
                                 )
                             }
@@ -228,14 +217,13 @@ fun TranslateDialogCard(
                         // 交換按鈕
                         IconButton(
                             onClick = {
-                                val swapped = swapLanguages(sourceLangCode, targetLangCode)
-                                sourceLangCode = swapped.source
-                                targetLangCode = swapped.target
+                                val (newSource, newTarget) = swapLanguages(sourceLangCode, targetLangCode)
 
-                                LanguagePreferences.saveSourceLanguage(context, sourceLangCode)
-                                LanguagePreferences.saveTargetLanguage(context, targetLangCode)
+                                sourceLangCode = newSource
+                                targetLangCode = newTarget
 
-                                doTranslate(sourceLangCode, targetLangCode)
+                                LanguagePreferences.saveSourceLanguage(context, newSource)
+                                LanguagePreferences.saveTargetLanguage(context, newTarget)
                             }
                         ) {
                             Icon(
@@ -248,7 +236,7 @@ fun TranslateDialogCard(
                         // 複製原文按鈕
                         IconButton(
                             onClick = {
-                                clipboardManager.setText(AnnotatedString(resultText))
+                                clipboardManager.setText(AnnotatedString(inputText))
 
                                 Toast.makeText(
                                     context,
@@ -323,7 +311,7 @@ fun TranslateDialogCard(
                                         false; LanguagePreferences.saveTargetLanguage(
                                         context,
                                         code
-                                    ); doTranslate(sourceLangCode, targetLangCode)
+                                    )
                                     }
                                 )
                             }
