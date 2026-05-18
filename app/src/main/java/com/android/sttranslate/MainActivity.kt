@@ -43,7 +43,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -99,35 +98,35 @@ fun RTranslatorStyleScreen(viewModel: TranslateViewModel = viewModel()) {
     var sourceLangCode by remember { mutableStateOf(LanguagePreferences.getSourceLanguage(context)) }
     var targetLangCode by remember { mutableStateOf(LanguagePreferences.getTargetLanguage(context)) }
 
-    LaunchedEffect(sourceLangCode, targetLangCode) {
-        if (viewModel.inputText.isNotBlank()) {
-            viewModel.performTranslate(sourceLangCode, targetLangCode)
-        }
-    }
-
     Scaffold(
         topBar = {
             LanguageSelectionBar(
                 sourceLang = sourceLangCode,
                 targetLang = targetLangCode,
                 onSourceClick = {
-                    sourceLangCode = it; LanguagePreferences.saveSourceLanguage(
-                    context,
-                    it
-                )
+                    sourceLangCode = it
+                    LanguagePreferences.saveSourceLanguage(context, it)
+                    if (viewModel.inputText.isNotBlank()) {
+                        viewModel.performTranslate(it, targetLangCode)
+                    }
                 },
                 onTargetClick = {
-                    targetLangCode = it; LanguagePreferences.saveTargetLanguage(
-                    context,
-                    it
-                )
+                    targetLangCode = it
+                    LanguagePreferences.saveTargetLanguage(context, it)
+                    if (viewModel.inputText.isNotBlank()) {
+                        viewModel.performTranslate(sourceLangCode, it)
+                    }
                 },
                 onSwap = {
                     val swapped = swapLanguages(sourceLangCode, targetLangCode)
                     sourceLangCode = swapped.source
                     targetLangCode = swapped.target
+                    LanguagePreferences.saveSourceLanguage(context, swapped.source)
+                    LanguagePreferences.saveTargetLanguage(context, swapped.target)
                     if (viewModel.resultText.isNotBlank()) {
-                        viewModel.inputText = viewModel.resultText
+                        val nextInput = viewModel.resultText
+                        viewModel.inputText = nextInput
+                        viewModel.performTranslate(swapped.source, swapped.target, nextInput)
                     }
                 }
             )
@@ -154,7 +153,10 @@ fun RTranslatorStyleScreen(viewModel: TranslateViewModel = viewModel()) {
                 modifier = Modifier.weight(0.4f),
                 inputText = viewModel.inputText,
                 onValueChange = { viewModel.inputText = it },
-                onTranslate = { viewModel.performTranslate(sourceLangCode, targetLangCode) },
+                onTranslate = {
+                    focusManager.clearFocus()
+                    viewModel.performTranslate(sourceLangCode, targetLangCode)
+                },
                 onClear = { viewModel.clearText() }
             )
 

@@ -3,15 +3,10 @@
     <string name="input_placeholder">輸入文字…</string>
     <string name="action_clear">清除</string>
     <string name="action_paste">貼上</string>
-    <string name="action_copy">複製譯文</string>
-    <string name="hint_copy_long_press">長按以複製</string>
     <string name="translation_empty">翻譯</string>
     <string name="error_connection">連線錯誤</string>
-    <string name="clipboard_empty">剪貼簿是空的</string>
     <string name="copied">已複製</string>
     <!-- 原文/譯文 標籤 -->
-    <string name="label_source">原文</string>
-    <string name="label_target">譯文</string>
     <string name="lang_detect">自動</string>
     <!-- 語言名稱 -->
     <string name="lang_zh_tw">中文 (繁體)</string>

@@ -1,22 +1,15 @@
 <resources>
     <string name="app_name">Translate</string>
-    <string name="input_placeholder">Enter text...</string>
-
-    <!-- Actions -->
+    <string name="input_placeholder">Enter text…</string>
     <string name="action_clear">Clear</string>
     <string name="action_paste">Paste</string>
-    <string name="action_copy">Copy</string>
 
     <!-- Hints & Status -->
-    <string name="hint_copy_long_press">Long press to copy</string>
     <string name="translation_empty">Translation</string>
     <string name="error_connection">Connection error</string>
-    <string name="clipboard_empty">Clipboard is empty</string>
     <string name="copied">Copied</string>
 
     <!-- Labels -->
-    <string name="label_source">Original</string>
-    <string name="label_target">Translation</string>
     <string name="lang_detect">Auto</string>
 
     <!-- Language Names -->
