@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 class TranslateViewModel : ViewModel() {
     var inputText by mutableStateOf("")
@@ -35,7 +36,8 @@ class TranslateViewModel : ViewModel() {
                     query = text
                 )
                 resultText = response.translatedText
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 resultText = "ERROR_CONNECTION"
             } finally {
                 isLoading = false
