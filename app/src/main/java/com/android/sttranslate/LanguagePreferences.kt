@@ -1,6 +1,7 @@
 package com.android.sttranslate
 
 import android.content.Context
+import androidx.core.content.edit
 
 object LanguagePreferences {
     private const val PREF_NAME = "st_translate_prefs"
@@ -20,7 +21,7 @@ object LanguagePreferences {
     // 儲存來源語言
     fun saveSourceLanguage(context: Context, code: String) {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putString(KEY_SOURCE_LANG, code).apply()
+        prefs.edit { putString(KEY_SOURCE_LANG, code) }
     }
 
     // 取得目標語言
@@ -32,6 +33,6 @@ object LanguagePreferences {
     // 儲存目標語言
     fun saveTargetLanguage(context: Context, code: String) {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putString(KEY_TARGET_LANG, code).apply()
+        prefs.edit { putString(KEY_TARGET_LANG, code) }
     }
 }

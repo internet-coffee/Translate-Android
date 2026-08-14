@@ -1,5 +1,6 @@
 package com.android.sttranslate
 
+import android.content.ClipData
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -43,18 +44,20 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sttranslate.ui.theme.STTranslateTheme
+import kotlinx.coroutines.launch
 
 class ShareTranslateActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -101,7 +104,8 @@ fun TranslateDialogCard(
 ) {
     // 狀態
     val context = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val coroutineScope = rememberCoroutineScope()
     val displayValue = if (viewModel.resultText == "ERROR_CONNECTION") {
         stringResource(R.string.error_connection)
     } else {
@@ -236,13 +240,15 @@ fun TranslateDialogCard(
                         // 複製原文按鈕
                         IconButton(
                             onClick = {
-                                clipboardManager.setText(AnnotatedString(inputText))
+                                coroutineScope.launch {
+                                    clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", inputText)))
 
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.copied),
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.copied),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                             }
                         ) {
                             Icon(
@@ -322,13 +328,17 @@ fun TranslateDialogCard(
                     IconButton(
                         onClick = {
                             if (viewModel.resultText.isNotEmpty()) {
-                                clipboardManager.setText(AnnotatedString(viewModel.resultText))
+                                coroutineScope.launch {
+                                    clipboard.setClipEntry(
+                                        ClipEntry(ClipData.newPlainText("", viewModel.resultText))
+                                    )
 
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.copied),
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.copied),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                             }
                         }
                     ) {

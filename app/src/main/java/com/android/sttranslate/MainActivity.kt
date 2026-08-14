@@ -1,5 +1,6 @@
 package com.android.sttranslate
 
+import android.content.ClipData
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -46,19 +47,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.sttranslate.ui.theme.STTranslateTheme
+import kotlinx.coroutines.launch
 
 object UIConfig {
     val HorizontalStart = 16.dp  // 左側文字起點
@@ -186,7 +189,8 @@ fun InputArea(
     onTranslate: () -> Unit,
     onClear: () -> Unit
 ) {
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val coroutineScope = rememberCoroutineScope()
 
     Box(modifier = modifier
         .fillMaxWidth()
@@ -222,7 +226,11 @@ fun InputArea(
             .align(Alignment.TopEnd)
             .padding(end = 4.dp)) {
             IconButton(onClick = {
-                clipboardManager.getText()?.let { onValueChange(it.text) }
+                coroutineScope.launch {
+                    val clipEntry = clipboard.getClipEntry()
+                    val pastedText = clipEntry?.clipData?.getItemAt(0)?.text
+                    pastedText?.let { onValueChange(it.toString()) }
+                }
             }) {
                 Icon(
                     Icons.Default.ContentPaste,
@@ -245,7 +253,8 @@ fun InputArea(
 
 @Composable
 fun ResultArea(modifier: Modifier, resultText: String, isPlaceholder: Boolean) {
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
     Box(modifier = modifier.fillMaxWidth()) {
@@ -274,9 +283,11 @@ fun ResultArea(modifier: Modifier, resultText: String, isPlaceholder: Boolean) {
         if (resultText.isNotEmpty()) {
             IconButton(
                 onClick = {
-                    clipboardManager.setText(AnnotatedString(resultText))
-                    Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT)
-                        .show()
+                    coroutineScope.launch {
+                        clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", resultText)))
+                        Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT)
+                            .show()
+                    }
                 },
                 modifier = Modifier
                     .align(Alignment.TopEnd)
