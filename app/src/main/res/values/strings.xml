@@ -1,12 +1,19 @@
 <resources>
     <string name="app_name">Translate</string>
     <string name="input_placeholder">Enter text…</string>
+
+    <!-- Content Description -->
     <string name="action_clear">Clear</string>
     <string name="action_paste">Paste</string>
+    <string name="action_swap">Swap Languages</string>
+    <string name="action_copy_original">Copy Original</string>
+    <string name="action_copy_translated">Copy Translated</string>
 
     <!-- Hints & Status -->
     <string name="translation_empty">Translation</string>
     <string name="error_connection">Connection error</string>
+    <string name="error_server">Server error</string>
+    <string name="error_unknown">Unknown error</string>
     <string name="copied">Copied</string>
 
     <!-- Labels -->

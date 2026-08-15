@@ -1,14 +1,25 @@
 <resources>
     <string name="app_name">翻譯</string>
     <string name="input_placeholder">輸入文字…</string>
+
+    <!-- Content Description -->
     <string name="action_clear">清除</string>
     <string name="action_paste">貼上</string>
+    <string name="action_swap">Swap Languages</string>
+    <string name="action_copy_original">Copy Original</string>
+    <string name="action_copy_translated">Copy Translated</string>
+
+    <!-- Hints & Status -->
     <string name="translation_empty">翻譯</string>
     <string name="error_connection">連線錯誤</string>
+    <string name="error_server">伺服器錯誤</string>
+    <string name="error_unknown">未知錯誤</string>
     <string name="copied">已複製</string>
-    <!-- 原文/譯文 標籤 -->
+
+    <!-- Labels -->
     <string name="lang_detect">自動</string>
-    <!-- 語言名稱 -->
+
+    <!-- Language Names -->
     <string name="lang_zh_tw">中文 (繁體)</string>
     <string name="lang_zh_cn">中文 (簡體)</string>
     <string name="lang_en">英語</string>

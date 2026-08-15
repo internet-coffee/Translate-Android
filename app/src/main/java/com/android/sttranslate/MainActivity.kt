@@ -88,49 +88,31 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun RTranslatorStyleScreen(viewModel: TranslateViewModel = viewModel()) {
-    val context = LocalContext.current
     val focusManager = LocalFocusManager.current
-    val isPlaceholder = viewModel.resultText.isEmpty()
-    val isError = viewModel.resultText == "ERROR_CONNECTION"
-
-    val displayResult = when {
-        isError -> stringResource(R.string.error_connection)
-        isPlaceholder -> stringResource(R.string.translation_empty)
-        else -> viewModel.resultText
+    val displayResult = when (val result = viewModel.translateResult) {
+        is TranslateResult.Success -> result.text
+        is TranslateResult.Error -> stringResource(result.type.messageResId())
+        TranslateResult.Empty -> stringResource(R.string.translation_empty)
     }
-
-    var sourceLangCode by remember { mutableStateOf(LanguagePreferences.getSourceLanguage(context)) }
-    var targetLangCode by remember { mutableStateOf(LanguagePreferences.getTargetLanguage(context)) }
+    val isPlaceholder = viewModel.translateResult is TranslateResult.Empty
 
     Scaffold(
         topBar = {
             LanguageSelectionBar(
-                sourceLang = sourceLangCode,
-                targetLang = targetLangCode,
-                onSourceClick = {
-                    sourceLangCode = it
-                    LanguagePreferences.saveSourceLanguage(context, it)
-                    if (viewModel.inputText.isNotBlank()) {
-                        viewModel.performTranslate(it, targetLangCode)
-                    }
-                },
-                onTargetClick = {
-                    targetLangCode = it
-                    LanguagePreferences.saveTargetLanguage(context, it)
-                    if (viewModel.inputText.isNotBlank()) {
-                        viewModel.performTranslate(sourceLangCode, it)
-                    }
-                },
+                sourceLang = viewModel.sourceLangCode,
+                targetLang = viewModel.targetLangCode,
+                onSourceClick = { viewModel.onSourceLanguageSelected(it) },
+                onTargetClick = { viewModel.onTargetLanguageSelected(it) },
                 onSwap = {
-                    val swapped = swapLanguages(sourceLangCode, targetLangCode)
-                    sourceLangCode = swapped.source
-                    targetLangCode = swapped.target
-                    LanguagePreferences.saveSourceLanguage(context, swapped.source)
-                    LanguagePreferences.saveTargetLanguage(context, swapped.target)
-                    if (viewModel.resultText.isNotBlank()) {
-                        val nextInput = viewModel.resultText
-                        viewModel.inputText = nextInput
-                        viewModel.performTranslate(swapped.source, swapped.target, nextInput)
+                    val previousResult = (viewModel.translateResult as? TranslateResult.Success)?.text
+                    viewModel.onSwapLanguages()
+                    if (!previousResult.isNullOrBlank()) {
+                        viewModel.onInputTextChanged(previousResult)
+                        viewModel.performTranslate(
+                            viewModel.sourceLangCode,
+                            viewModel.targetLangCode,
+                            previousResult
+                        )
                     }
                 }
             )
@@ -139,7 +121,7 @@ fun RTranslatorStyleScreen(viewModel: TranslateViewModel = viewModel()) {
             FloatingActionButton(
                 onClick = {
                     focusManager.clearFocus()
-                    viewModel.performTranslate(sourceLangCode, targetLangCode)
+                    viewModel.performTranslate(viewModel.sourceLangCode, viewModel.targetLangCode)
                 },
                 containerColor = MaterialTheme.colorScheme.primaryContainer
             ) {
@@ -156,10 +138,10 @@ fun RTranslatorStyleScreen(viewModel: TranslateViewModel = viewModel()) {
             InputArea(
                 modifier = Modifier.weight(0.4f),
                 inputText = viewModel.inputText,
-                onValueChange = { viewModel.inputText = it },
+                onValueChange = { viewModel.onInputTextChanged(it) },
                 onTranslate = {
                     focusManager.clearFocus()
-                    viewModel.performTranslate(sourceLangCode, targetLangCode)
+                    viewModel.performTranslate(viewModel.sourceLangCode, viewModel.targetLangCode)
                 },
                 onClear = { viewModel.clearText() }
             )
@@ -295,7 +277,7 @@ fun ResultArea(modifier: Modifier, resultText: String, isPlaceholder: Boolean) {
             ) {
                 Icon(
                     Icons.Default.ContentCopy,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.action_copy_translated),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
@@ -336,7 +318,7 @@ fun LanguageSelectionBar(
             IconButton(onClick = onSwap) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.CompareArrows,
-                    contentDescription = "Swap Languages",
+                    contentDescription = stringResource(R.string.action_swap),
                     modifier = Modifier.size(18.dp),
                     tint = MaterialTheme.colorScheme.onSurface
                 )

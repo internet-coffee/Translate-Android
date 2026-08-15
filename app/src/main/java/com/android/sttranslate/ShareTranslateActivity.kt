@@ -106,14 +106,14 @@ fun TranslateDialogCard(
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
     val coroutineScope = rememberCoroutineScope()
-    val displayValue = if (viewModel.resultText == "ERROR_CONNECTION") {
-        stringResource(R.string.error_connection)
-    } else {
-        viewModel.resultText
+    val displayValue = when (val result = viewModel.translateResult) {
+        is TranslateResult.Success -> result.text
+        is TranslateResult.Error -> stringResource(result.type.messageResId())
+        TranslateResult.Empty -> ""
     }
 
-    var sourceLangCode by remember { mutableStateOf(LanguagePreferences.getSourceLanguage(context)) }
-    var targetLangCode by remember { mutableStateOf(LanguagePreferences.getTargetLanguage(context)) }
+    val sourceLangCode = viewModel.sourceLangCode
+    val targetLangCode = viewModel.targetLangCode
 
     // 選單開關
     var isSourceMenuExpanded by remember { mutableStateOf(false) }
@@ -121,13 +121,9 @@ fun TranslateDialogCard(
 
     LaunchedEffect(inputText) {
         if (viewModel.inputText.isBlank()) {
-            viewModel.inputText = inputText
+            viewModel.onInputTextChanged(inputText)
+            viewModel.performTranslate(viewModel.sourceLangCode, viewModel.targetLangCode)
         }
-    }
-
-    // 監控語言變動自動翻譯
-    LaunchedEffect(sourceLangCode, targetLangCode) {
-        viewModel.performTranslate(sourceLangCode, targetLangCode)
     }
 
     // === 主卡片 ===
@@ -207,9 +203,8 @@ fun TranslateDialogCard(
                                 DropdownMenuItem(
                                     text = { Text(stringResource(nameResId)) },
                                     onClick = {
-                                        sourceLangCode = code
+                                        viewModel.onSourceLanguageSelected(code)
                                         isSourceMenuExpanded = false
-                                        LanguagePreferences.saveSourceLanguage(context, code)
                                     }
                                 )
                             }
@@ -221,18 +216,17 @@ fun TranslateDialogCard(
                         // 交換按鈕
                         IconButton(
                             onClick = {
-                                val (newSource, newTarget) = swapLanguages(sourceLangCode, targetLangCode)
-
-                                sourceLangCode = newSource
-                                targetLangCode = newTarget
-
-                                LanguagePreferences.saveSourceLanguage(context, newSource)
-                                LanguagePreferences.saveTargetLanguage(context, newTarget)
+                                viewModel.onSwapLanguages()
+                                viewModel.performTranslate(
+                                    viewModel.sourceLangCode,
+                                    viewModel.targetLangCode,
+                                    inputText
+                                )
                             }
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.CompareArrows,
-                                contentDescription = "Swap",
+                                contentDescription = stringResource(R.string.action_swap),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -253,7 +247,7 @@ fun TranslateDialogCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "Copy Original",
+                                contentDescription = stringResource(R.string.action_copy_original),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -313,11 +307,8 @@ fun TranslateDialogCard(
                                 DropdownMenuItem(
                                     text = { Text(stringResource(nameResId)) },
                                     onClick = {
-                                        targetLangCode = code; isTargetMenuExpanded =
-                                        false; LanguagePreferences.saveTargetLanguage(
-                                        context,
-                                        code
-                                    )
+                                        viewModel.onTargetLanguageSelected(code)
+                                        isTargetMenuExpanded = false
                                     }
                                 )
                             }
@@ -327,10 +318,11 @@ fun TranslateDialogCard(
                     // 複製譯文按鈕
                     IconButton(
                         onClick = {
-                            if (viewModel.resultText.isNotEmpty()) {
+                            val result = viewModel.translateResult
+                            if (result is TranslateResult.Success) {
                                 coroutineScope.launch {
                                     clipboard.setClipEntry(
-                                        ClipEntry(ClipData.newPlainText("", viewModel.resultText))
+                                        ClipEntry(ClipData.newPlainText("", result.text))
                                     )
 
                                     Toast.makeText(
@@ -344,7 +336,7 @@ fun TranslateDialogCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.ContentCopy,
-                            contentDescription = "Copy Translated",
+                            contentDescription = stringResource(R.string.action_copy_translated),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
